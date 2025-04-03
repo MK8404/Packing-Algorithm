@@ -30,9 +30,11 @@ The C++ interface R-package **`Rcpp`** has been used to enable C++ code for two 
 
 **`dist_mat_rcpp`** that computes the distances matrix for a given input matrix neighbors and is used in **`find_per_final`**
 
-**`neighborhood_s_cpp`**   ????????
+**`neighborhood_s_cpp`**  that computes higher order neighborhoods and is use in  **`power`**. 
 
-Utilizing the 
+Utilizing C++ improves computational efficiency in these two functions. 
+
+Additionally, in **`find_per_final`**, the multidimensional scaling function **`cmdscale`** is used. It is a part of the standard **`stats`** R-package. 
 
 ## **Usage Instructions**  
 
