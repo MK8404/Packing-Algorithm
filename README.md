@@ -25,11 +25,14 @@ To run the code successfully, the following R packages must be installed:
 install.packages(c("data.table", "Rcpp"))
 ```
 The R-package **`data.table`** is used to speed up the computation of the alignment process for large dimensions.
+
 The C++ interface R-package **`Rcpp`** has been used to enable C++ code for two functions:
 
-**`dist_mat_rcpp`** that computes the distances matrix for a given input matrix neighborgs
+**`dist_mat_rcpp`** that computes the distances matrix for a given input matrix neighbors and is used in **`find_per_final`**
 
-**`neighborhood_s_cpp`**   
+**`neighborhood_s_cpp`**   ????????
+
+Utilizing the 
 
 ## **Usage Instructions**  
 
