@@ -30,7 +30,7 @@ The C++ interface R-package **`Rcpp`** has been used to enable C++ code for two 
 
 **`dist_mat_rcpp`** that computes the distances matrix for a given input matrix neighbors and is used in **`find_per_final`**
 
-**`neighborhood_s_cpp`**  that computes higher order neighborhoods and is use in  **`power`**. 
+**`neighborhood_s_cpp`**  that computes higher order neighborhoods and is used in  **`power`**. 
 
 Utilizing C++ improves computational efficiency in these two functions. 
 
