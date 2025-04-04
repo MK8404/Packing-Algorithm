@@ -28,7 +28,7 @@ The R-package **`data.table`** is used to speed up the computation of the alignm
 
 The C++ interface R-package **`Rcpp`** has been used to enable C++ code for two functions:
 
-**`dist_mat_rcpp`** that computes the distances matrix for a given input matrix neighbors and is used in **`find_per_final`**
+**`dist_mat_rcpp`** that computes the distances matrix for a given input row neighborhood and is used in **`find_per_final`**
 
 **`neighborhood_s_cpp`**  that computes higher order neighborhoods and is used in  **`power`**. 
 
