@@ -1,12 +1,21 @@
 ### **README.md**  
 
-# **Supplementary Code for "Dyadic factorization and efficient inversion of sparse positive definite matrices"**  
+# **Supplementary Code for "Structural packing, factorization, and efficient inversion of sparse
+positive definite matrices"** by Kos, M., Podgorski, K., Wu, H.
 
-This repository contains R scripts that serve as a supplement to the article **"Dyadic factorization and efficient inversion of sparse positive definite matrices"**. The provided code enables the reproduction of the results presented in the section dedicated to the **packing algorithm**.  
+This repository contains R scripts that serve as a supplement to the article **"DStructural packing, factorization, and efficient inversion of sparse
+positive definite matrices"**. The provided code enables reproduction of the simulation and computational results presented in the section dedicated to the **packing algorithm**.  
 
 ## **Repository Contents**  
+The R Markdown files
+1. **`Sect5robust.Rmd`** - the robustness study of Section 5 in the paper. 
+2. **`simulations_and_plots.R`** – Provides scripts for reproducing the simulation results and generating the figures from the **"Simulation based performance"** section of the article.  
 
-The repository includes the following three R scripts:  
+The repository also includes three subdirectories.
+
+**'Packing'** contains 
+
+R scripts:  
 
 1. **`matrix_generation.R`** – Contains functions for generating three types of matrices:  
    - Band matrices  
@@ -15,7 +24,14 @@ The repository includes the following three R scripts:
 
 2. **`packing_alg.R`** – Implements functions necessary for computing the optimal permutation using the packing algorithm.  
 
-3. **`simulations_and_plots.R`** – Provides scripts for reproducing the simulation results and generating the figures from the **"Simulation based performance"** section of the article.  
+**'VNS'** contains 
+
+Cpp scripts with the implementation of the Variable Neighbourhood Search algorithm.  
+
+**'Misc'** contains 
+
+miscellaneous scripts to support R Markdown scripts
+
 
 ## **Installation and Dependencies**  
 
