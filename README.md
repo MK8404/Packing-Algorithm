@@ -2,7 +2,7 @@
 
 # **Supplementary Code for "Structural packing, factorization, and efficient inversion of sparse positive definite matrices"** by Kos, M., Podgorski, K., Wu, H.
 
-This repository contains R scripts that serve as a supplement to the article **"DStructural packing, factorization, and efficient inversion of sparse
+This repository contains R scripts that serve as a supplement to the article **"Structural packing, factorization, and efficient inversion of sparse
 positive definite matrices"**. The provided code enables reproduction of the simulation and computational results presented in the section dedicated to the **packing algorithm**.  
 
 ## **Repository Contents**  
