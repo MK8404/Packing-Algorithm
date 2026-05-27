@@ -17,12 +17,12 @@ The repository also includes three subdirectories.
 
    - R scripts:  
 
-   1. **`matrix_generation.R`** – Contains functions for generating three types of matrices:  
-      - Band matrices  
-      - Block tridiagonal matrices  
-      - Dyadic matrices  
+      1. **`matrix_generation.R`** – Contains functions for generating three types of matrices:  
+         - Band matrices  
+         - Block tridiagonal matrices  
+         - Dyadic matrices  
 
-   2. **`packing_alg.R`** – Implements functions necessary for computing the optimal permutation using the packing algorithm.  
+      2. **`packing_alg.R`** – Implements functions necessary for computing the optimal permutation using the packing algorithm.  
 
 **'VNS'** contains 
 
