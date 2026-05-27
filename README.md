@@ -15,22 +15,22 @@ The repository also includes three subdirectories.
 
 **'Packing'** contains 
 
-R scripts:  
+   - R scripts:  
 
-1. **`matrix_generation.R`** – Contains functions for generating three types of matrices:  
-   - Band matrices  
-   - Block tridiagonal matrices  
-   - Dyadic matrices  
+   1. **`matrix_generation.R`** – Contains functions for generating three types of matrices:  
+      - Band matrices  
+      - Block tridiagonal matrices  
+      - Dyadic matrices  
 
-2. **`packing_alg.R`** – Implements functions necessary for computing the optimal permutation using the packing algorithm.  
+   2. **`packing_alg.R`** – Implements functions necessary for computing the optimal permutation using the packing algorithm.  
 
 **'VNS'** contains 
 
-Cpp scripts with the implementation of the Variable Neighbourhood Search algorithm.  
+   - Cpp scripts with the implementation of the Variable Neighbourhood Search algorithm.  
 
 **'Misc'** contains 
 
-miscellaneous scripts to support R Markdown scripts
+   - miscellaneous scripts to support R Markdown scripts
 
 
 ## **Installation and Dependencies**  
