@@ -1,0 +1,624 @@
+---
+title: "Section 5 Robustness study"
+output: html_document
+date: "2026-05-27"
+---
+
+## Description
+
+In this notebook, the simulation and computational study is performed for Section 5 of *Structural packing, factorization, and efficient inversion of sparse positive definite matrices* by Michał Kos, Krzysztof Podgórski and Hanqing Wu. We consider different cases of tridiagonal matrices as well as their perturbations and the effect of applying the VNS and the new packing algorithm to them.
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. In the following chunk, we set the basic markdown parameters for these experiments.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '<THE TARGET FOLDER>')
+```
+
+When you click the **Knit** button, a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(Matrix)
+library(R.matlab)
+install.packages("data.table")
+library(data.table)
+install.packages("Rcpp")
+library(Rcpp)
+```
+
+## Supporting functions
+
+The following are some useful functions that will be utilized in the study below. They can be found in the corresponding directories at the GitHub repository. There can be a warning generated, which does not have a negative effect.
+
+```{r}
+## Code for generating matrices and packing algorithms
+source("Packing/matrix_generation.R")
+source("Packing/packing_alg.R")
+source("Misc/extract_out.R")
+rotate <- function(x) t(apply(x, 2, rev))
+```
+
+Functions for calculating several important characteristics of a band matrix:
+
+```{r}
+bandwidth <- function(mat) {
+  # Get row and column indices of all non-zero elements
+  idx <- which(mat != 0, arr.ind = TRUE)
+  if (nrow(idx) == 0) return(0)
+  
+  # Calculate the absolute distance from the diagonal for all elements at once
+  max_dist <- max(abs(idx[, 1] - idx[, 2]))
+  return(max_dist * 2)
+}
+
+l1_norm <- function(mat) {
+  idx <- which(mat != 0, arr.ind = TRUE)
+  if (nrow(idx) == 0) return(0)
+  
+  # Calculate distances for all non-zero elements
+  dists <- abs(idx[, 1] - idx[, 2])
+  
+  # Aggregate the maximum distance grouping by row, then sum them
+  row_max_dists <- tapply(dists, idx[, 1], max)
+  return(sum(row_max_dists))
+}
+
+extr_alg <- function(A, N=100 , q=0.001, s=1)
+{
+  exrs <- list()
+  per <- list()
+  l1 <- vector('numeric',N)
+  for(i in 1:N){
+    per[[i]] <- find_per_final(power(A, s), 0)
+    A <- permute(A,per[[i]])
+    l1[i] <- l1_norm(sp2mat(A))
+    ExtrA <- extract_out(A,quant=q)
+    A <- ExtrA$B
+    exrs[[i]]<-ExtrA$extracted
+  }
+  return(list(A = A, per=per, extrows = exrs, l1 = l1))
+}
+
+#The function that loops N times through 'find_per_final()' and delivers the result with the smallest l_1 norm among all N that have been returned. One can chose the order s of the neighborhoods considered in the algorithm
+#' @param A List, adjacency list representing the graph
+#' @param s Integer, the order of neighborhood
+#' @param N the number of repetitions of the main optimization algorithm
+#' @return A list list('perm'=permutation,'minl1'=minimall1) of two elements: the first one, 'permutation' is the permutation for the smalles l1-norm in the run, the second one 'minimall1' is the corresponding minimal value of the norm
+#' 
+#' 
+
+find_per_MC <- function(A,s=1,N=10) {
+minimall1 <- Inf
+for(i in 1:N){
+  per <- find_per_final(power(A, s), 0)
+  C <- permute(A, per)
+  ln <- l1_norm(sp2mat(C))
+  if(minimall1>ln){
+    minimall1 <- ln
+    permutation <- per
+  }
+}
+
+val=list(perm=permutation,minl1=minimall1)
+return(val)
+
+}
+
+```
+
+## Experiments on the block-tridiagonal matrix
+
+### Parameters k, N, p
+
+Code needed to generate illustrating examples of block-tridiagonal matrices and the effect of applying a packing algorithm to them. We generate two initial block-tridiagonal matrices. Function *'f_pbbm()'* is used to randomly permute the entries. The l1 norm is computed for unpermuted and permuted matrices.
+
+```{r}
+par(mar = c(0.5, 0.5, 0.5, 0.5))
+set.seed(1) # reproducibility
+
+k <- 20
+N <- 4
+p <- 0.25
+A <- f_pbbm(k = k, N = N, l = 2 * k, p = p, Id = T) # sparse block-tridiagonal matrix
+l1_norm(sp2mat(A$A))
+A1 <- f_pbbm(k = k, N = N, l = 2 * k, p = 1, Id = F) # full block-tridiagonal matrix
+A <- f_pbbm(k = k, N = N, l = 2 * k, p = p, Id = F) # sparse block-tridiagonal matrix
+l1_norm(sp2mat(A$A))
+```
+
+```{r}
+image(rotate(sp2mat(A$A)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+```
+
+## Special format for sparse matrices \*.mtx
+
+### *What is Matrix Market (.mtx)?*
+
+- Developed by NIST
+
+- Human-readable text format
+
+- Common in MATLAB, Python (SciPy), R, Julia
+
+- Frequently used for **sparse matrices**
+
+%%MatrixMarket matrix coordinate real general
+
+%Header line % This is a comment line
+
+5 5 8 %Size line
+
+1 1 10.0 %Data lines: row, column value
+
+1 3 3.5
+
+2 2 5.0
+
+3 1 2.1
+
+4 5 7.0
+
+5 2 1.3
+
+5 4 8.2
+
+5 5 6.6
+
+```{r}
+BLOCK_TRIDIAGONAL_PERM <- as(sp2mat(A$A) * 1.0, "dgCMatrix")
+writeMM(BLOCK_TRIDIAGONAL_PERM, file = "BLOCK_TRIDIAGONAL_PERM.mtx")
+```
+
+Call to the VNS algorithm implemented in C++ to find a permutation that recovers the block-tridiagonal structure. The code is writen by Hanqing Wu. An executable file named "VNS_main" is expected to be in the same folder as this R Markdown file, and it should read the matrix from "BLOCK_TRIDIAGONAL_PERM.mtx" and output the permuted matrix to "BLOCK_TRIDIAGONAL_PERM_perm.mtx". The file needs to be considered executable, and the first system commands just do it for MacOS. On compilation of C++ source to executable files, see the VNS folder
+
+```{r}
+ 
+system2("chmod", args = "+x ./VNS_main")
+system2("./VNS_main", args = "./BLOCK_TRIDIAGONAL_PERM.mtx")
+```
+
+```{r}
+BLOCK_TRIDIAGONAL_PERM <- readMM("./BLOCK_TRIDIAGONAL_PERM.mtx")
+BLOCK_TRIDIAGONAL_PERM_perm <- readMM("./BLOCK_TRIDIAGONAL_PERM_perm.mtx")
+```
+
+```{r}
+BLOCK_TRIDIAGONAL_recovered <- BLOCK_TRIDIAGONAL_PERM_perm %*% BLOCK_TRIDIAGONAL_PERM %*% t(BLOCK_TRIDIAGONAL_PERM_perm)
+```
+
+```{r}
+image(rotate(BLOCK_TRIDIAGONAL_recovered))
+l1_norm(BLOCK_TRIDIAGONAL_recovered)
+```
+
+### The matrix recovered by the VNS algorithm
+
+```{r}
+pdf("./BLOCK_TRIDIAGONAL_recovered.pdf", width = 6, height = 6)
+par(mar = c(0, 0, 0, 0))
+image(rotate(BLOCK_TRIDIAGONAL_recovered), axes = FALSE, xlab = "", ylab = "")
+dev.off()
+```
+
+### Recovery by the packing algorithm
+
+```{r}
+result=find_per_MC(A$A)
+C=permute(A$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+```
+
+```{r}
+result=find_per_MC(A$A,s=2)
+C=permute(A$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+```
+
+## Matrices more dense at the center along the diagonal
+
+```{r}
+k1 <- 5
+A1 <- f_pbbm(k = k, N = N, l = 2 * k, p = p, Id = T) # sparse block-tridiagonal matrix 
+A2 <- f_pbbm(k = k, N = N, l = 2 * k1, p = 2*p, Id = T) # sparse block-tridiagonal matrix cut at the blocksize width so it is a band matrix
+image(rotate(sp2mat(A2$A)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+NUA2 <- sp2mat(A2$A)+sp2mat(A1$A)
+NUA2[NUA2 > 1] <- 1
+image(rotate(NUA2), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+l1_norm(NUA2)
+sz=dim(NUA2)[1]
+perm <- sample(1:sz)
+A1$A <- permute(mat2sp(NUA2),perm)
+image(rotate(sp2mat(A1$A)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+```
+
+The results of matrix reconstructions
+
+```{r}
+
+result=find_per_MC(A1$A)
+C=permute(A1$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+result=find_per_MC(A1$A,s=2)
+C=permute(A1$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+
+
+```
+
+```{r}
+NU_BLOCK_TRIDIAGONAL_PERM <- as(sp2mat(A1$A) * 1.0, "dgCMatrix")
+writeMM(NU_BLOCK_TRIDIAGONAL_PERM, file = "NU_BLOCK_TRIDIAGONAL_PERM.mtx")
+system2("chmod", args = "+x ./VNS_main") #To treat the program as an executable
+system2("./VNS_main", args = "./NU_BLOCK_TRIDIAGONAL_PERM.mtx")
+NU_BLOCK_TRIDIAGONAL_PERM <- readMM("./NU_BLOCK_TRIDIAGONAL_PERM.mtx")
+NU_BLOCK_TRIDIAGONAL_PERM_perm <- readMM("./NU_BLOCK_TRIDIAGONAL_PERM_perm.mtx")
+NU_BLOCK_TRIDIAGONAL_recovered <- NU_BLOCK_TRIDIAGONAL_PERM_perm %*% NU_BLOCK_TRIDIAGONAL_PERM %*% t(NU_BLOCK_TRIDIAGONAL_PERM_perm)
+image(rotate(NU_BLOCK_TRIDIAGONAL_recovered))
+l1_norm(NU_BLOCK_TRIDIAGONAL_recovered)
+```
+
+## Distorted matrices - a robustness study
+
+In these examples, a pure noise is added in a small portion of the previous matrix. We start with a full tridiagonal matrix with small noise added at the center and then permuted.
+
+```{r}
+NA1 <- f_pbbm(k = k, N = N, l = 2 * k, p = 1, Id = T) # full block-tridiagonal non-permuted matrix
+image(rotate(sp2mat(NA1$A)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+NA11 <- sp2mat(NA1$A)
+```
+
+Generating a tridiagonal matrix with small noise added
+
+```{r}
+q <- 0.0002 #the noise parameter
+sz <- dim(NA11)[1]
+Noise <- matrix(rbinom(sz*sz,1,q),ncol=sz,nrow=sz)
+sum(Noise)
+Noise <- Noise + t(Noise) 
+#image(rotate(Noise), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+NA11 <- NA11 + Noise
+NA11[NA11 > 1] <- 1
+image(rotate(NA11), axes = FALSE, xlab = "", ylab = "",pch=4, col = c("white", "black"))
+l1_norm(NA11)
+```
+
+Permuting the matrix with noise
+
+```{r}
+perm <- sample(1:sz)
+NA1$A <- permute(mat2sp(NA11),perm)
+image(rotate(sp2mat(NA1$A)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+l1_norm(sp2mat(NA1$A))
+```
+
+Michal's algorithm
+
+```{r}
+
+result=find_per_MC(NA1$A)
+C=permute(NA1$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+
+```
+
+Removing extreme vertices
+
+```{r}
+EXT<-extr_alg(NA1$A,N=20,q=0.01)
+C <- EXT$A
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+plot(EXT$l1)
+
+```
+
+```{r}
+
+result=find_per_MC(NA1$A,s=2)
+C=permute(NA1$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+```
+
+Removing extreme vertices
+
+```{r}
+EXT<-extr_alg(NA1$A,N=20,q=0.01,s=2)
+C <- EXT$A
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+plot(EXT$l1)
+
+```
+
+The VNS algorithm
+
+```{r}
+N_BLOCK_TRIDIAGONAL_PERM <- as(sp2mat(NA1$A) * 1.0, "dgCMatrix")
+writeMM(N_BLOCK_TRIDIAGONAL_PERM, file = "N_BLOCK_TRIDIAGONAL_PERM.mtx")
+system2("chmod", args = "+x ./VNS_main") #To treat the program as an executable
+system2("./VNS_main", args = "./N_BLOCK_TRIDIAGONAL_PERM.mtx")
+N_BLOCK_TRIDIAGONAL_PERM <- readMM("./N_BLOCK_TRIDIAGONAL_PERM.mtx")
+N_BLOCK_TRIDIAGONAL_PERM_perm <- readMM("./N_BLOCK_TRIDIAGONAL_PERM_perm.mtx")
+N_BLOCK_TRIDIAGONAL_recovered <- N_BLOCK_TRIDIAGONAL_PERM_perm %*% N_BLOCK_TRIDIAGONAL_PERM %*% t(N_BLOCK_TRIDIAGONAL_PERM_perm)
+image(rotate(N_BLOCK_TRIDIAGONAL_recovered))
+l1_norm(N_BLOCK_TRIDIAGONAL_recovered)
+```
+
+Sparse tridiagonal case with noise
+
+```{r}
+NA2 <- f_pbbm(k = k, N = N, l = 2 * k, p = p, Id = T) # sparse block-tridiagonal non-permuted matrix
+#image(rotate(sp2mat(NA2$A)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+NA21 <- sp2mat(NA2$A)
+NA21 <- NA21 + Noise
+NA21[NA21 > 1] <- 1
+NA2$A=mat2sp(NA21)
+image(rotate(NA21), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+```
+
+Recovery
+
+```{r}
+result=find_per_MC(NA2$A)
+C=permute(NA2$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+
+```
+
+```{r}
+EXT<-extr_alg(NA2$A,N=20,q=0.01)
+C <- EXT$A
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+plot(EXT$l1)
+
+```
+
+```{r}
+result=find_per_MC(NA2$A,s=2)
+C=permute(NA2$A,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+
+```
+
+```{r}
+EXT<-extr_alg(NA2$A,N=20,q=0.01,s=2)
+C <- EXT$A
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+plot(EXT$l1)
+
+```
+
+The same case for the VNS algorithm.
+
+```{r}
+N2_BLOCK_TRIDIAGONAL_PERM <- as(sp2mat(NA2$A) * 1.0, "dgCMatrix")
+writeMM(N2_BLOCK_TRIDIAGONAL_PERM, file = "N2_BLOCK_TRIDIAGONAL_PERM.mtx")
+system2("chmod", args = "+x ./VNS_main") #To treat the program as an executable
+system2("./VNS_main", args = "./N2_BLOCK_TRIDIAGONAL_PERM.mtx")
+N2_BLOCK_TRIDIAGONAL_PERM <- readMM("./N2_BLOCK_TRIDIAGONAL_PERM.mtx")
+N2_BLOCK_TRIDIAGONAL_PERM_perm <- readMM("./N2_BLOCK_TRIDIAGONAL_PERM_perm.mtx")
+N2_BLOCK_TRIDIAGONAL_recovered <- N2_BLOCK_TRIDIAGONAL_PERM_perm %*% N2_BLOCK_TRIDIAGONAL_PERM %*% t(N2_BLOCK_TRIDIAGONAL_PERM_perm)
+image(rotate(N2_BLOCK_TRIDIAGONAL_recovered))
+l1_norm(N2_BLOCK_TRIDIAGONAL_recovered)
+```
+
+Adding the central denser portion.
+
+```{r}
+NNU22 <- NA21+sp2mat(A2$A)
+NNU22[NNU22 > 1] <- 1
+image(rotate(NNU22))
+NNU23 <- permute(mat2sp(NNU22),perm)
+image(rotate(sp2mat(NNU23)))
+```
+
+Applying algorithms
+
+```{r}
+result=find_per_MC(NNU23)
+C=permute(NNU23,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+```
+
+```{r}
+EXT<-extr_alg(NNU23,N=30,q=0.01)
+C <- EXT$A
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+plot(EXT$l1)
+
+```
+
+Neighbors of the second order
+
+```{r}
+result=find_per_MC(NNU23,s=2)
+C=permute(NNU23,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+```
+
+```{r}
+EXT<-extr_alg(NNU23,N=30,q=0.01,s=2)
+C <- EXT$A
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+plot(EXT$l1)
+l1_norm(sp2mat(EXT$A))
+```
+
+The VNS algorithm\
+
+```{r}
+N3_BLOCK_TRIDIAGONAL_PERM <- as(sp2mat(NNU23) * 1.0, "dgCMatrix")
+writeMM(N3_BLOCK_TRIDIAGONAL_PERM, file = "N3_BLOCK_TRIDIAGONAL_PERM.mtx")
+system2("chmod", args = "+x ./VNS_main") #To treat the program as an executable
+system2("./VNS_main", args = "./N3_BLOCK_TRIDIAGONAL_PERM.mtx")
+N3_BLOCK_TRIDIAGONAL_PERM_perm <- readMM("./N3_BLOCK_TRIDIAGONAL_PERM_perm.mtx")
+N3_BLOCK_TRIDIAGONAL_recovered <- N3_BLOCK_TRIDIAGONAL_PERM_perm %*% N3_BLOCK_TRIDIAGONAL_PERM %*% t(N3_BLOCK_TRIDIAGONAL_PERM_perm)
+image(rotate(N3_BLOCK_TRIDIAGONAL_recovered))
+l1_norm(N3_BLOCK_TRIDIAGONAL_recovered)
+```
+
+## Adding the noise in the narrow range of indexes
+
+This remaining part of the code has not been used in the paper.
+
+Creating the noise
+
+```{r}
+
+br <- 10
+den <- 0.5
+d=dim(Noise)[1]
+
+if(floor(d/2)*2 == d){
+  Blk <- matrix(rbinom(2*br*(dim(Noise)[1]),1,den),ncol=2*br,nrow=dim(Noise)[1])
+}else{
+  Blk <- matrix(rbinom((2*br+1)*(dim(Noise)[1]),1,den),ncol=2*br+1,nrow=dim(Noise)[1]) 
+}
+
+
+#Zeros at the extreme ends of 'cross'
+H <- 40
+Zer <- matrix(0,nrow=H,ncol=dim(Blk)[2])
+Blk[1:H,] <- Zer
+Blk[(dim(Noise)[1]-H+1):dim(Noise)[1],] <- Zer
+BNs <- diag(d)
+BNs[,(floor(d/2)-br):(floor(d/2)-br+dim(Blk)[2]-1)] <- Blk
+
+BNs <- BNs+t(BNs)
+BNs[BNs > 1] <- 1
+
+
+image(rotate(BNs))
+
+A <- f_pbbm(k = k, N = N, l =2* k, p = 0.5, Id = T) # sparse block-tridiagonal matrix
+
+BNA <- sp2mat(A$A)+BNs
+BNA[BNA>1]<-1
+
+image(rotate(BNA))
+
+perm <- sample(1:d)
+BNA1 <- permute(mat2sp(BNA),perm)
+
+```
+
+Algorithms on random permutations of the above matrix
+
+```{r}
+
+result=find_per_MC(BNA1)
+C=permute(BNA1,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+```
+
+Neighborhoods of order 2
+
+```{r}
+
+result=find_per_MC(BNA1,s=2)
+C=permute(BNA1,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+
+```
+
+```{r}
+BNA12 <- as(sp2mat(BNA1) * 1.0, "dgCMatrix")
+writeMM(BNA12, file = "BNA12.mtx")
+system2("chmod", args = "+x ./VNS_main") #To treat the program as an executable
+system2("./VNS_main", args = "./BNA12.mtx")
+BNA12_perm <- readMM("./BNA12_perm.mtx")
+BNA1_recovered <- BNA12_perm %*% BNA12 %*% t(BNA12_perm)
+image(rotate(BNA1_recovered))
+l1_norm(BNA1_recovered)
+```
+
+Adding 'cross' noise to already permuted matrix
+
+```{r}
+A <- f_pbbm(k = k, N = N, l = 2 * k, p = p, Id = F) # sparse block-tridiagonal matrix
+
+BNA <- sp2mat(A$A)+BNs
+BNA[BNA>1]<-1
+
+image(rotate(BNA))
+
+perm <- sample(1:d)
+BNA1 <- permute(mat2sp(BNA),perm)
+
+
+```
+
+```{r}
+result=find_per_MC(BNA1)
+C=permute(BNA1,result$perm)
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+```
+
+```{r}
+result=find_per_MC(BNA1,s=2)
+
+abc <- find_per_final(power(BNA1, 2), 0)
+C=permute(BNA1,abc)
+C=permute(BNA1,result$perm)
+
+
+image(rotate(sp2mat(C)), axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+result$minl1
+
+
+```
+
+```{r}
+BNA12 <- as(sp2mat(BNA1) * 1.0, "dgCMatrix")
+writeMM(BNA12, file = "BNA12.mtx")
+system2("chmod", args = "+x ./VNS_main") #To treat the program as an executable
+system2("./VNS_main", args = "./BNA12.mtx")
+BNA12_perm <- readMM("./BNA12_perm.mtx")
+BNA1_recovered <- BNA12_perm %*% BNA12 %*% t(BNA12_perm)
+image(rotate(BNA1_recovered))
+l1_norm(BNA1_recovered)
+```
