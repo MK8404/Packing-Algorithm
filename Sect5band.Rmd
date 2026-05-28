@@ -1,0 +1,243 @@
+---
+title: "Section 5 Intro and Permuted band matrices"
+output: html_document
+date: "2026-05-27"
+---## Description
+
+In this notebook, the simulation and computational study is performed for Section 5 of *Structural packing, factorization, and efficient inversion of sparse positive definite matrices* by Michał Kos, Krzysztof Podgórski and Hanqing Wu. We consider different cases of band matrices and the effect of applying the new packing algorithm to them.
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. In the following chunk, we set the basic markdown parameters for these experiments.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '<THE TARGET FOLDER>')
+
+```
+
+When you click the **Knit** button, a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(Matrix)
+library(R.matlab)
+#install.packages("data.table")
+library(data.table)
+#install.packages("Rcpp")
+library(Rcpp)
+library(ggplot2)
+```
+
+## Supporting functions
+
+The following are some useful functions that will be utilized in the study below. They can be found in the corresponding directories at the GitHub repository. There can be a warning generated, which does not have a negative effect.
+
+```{r}
+## Code for generating matrices and packing algorithms
+source("Packing/matrix_generation.R")
+source("Packing/packing_alg.R")
+rotate <- function(x) t(apply(x, 2, rev))
+```
+
+
+# Figure 1. Introductory part of section 5.
+
+Code needed to generate Figure 1 which presents consequences of increasing the neighborhood size for finding the optimal permutation (for permuted full band matrix).
+
+Parameters of the full band matrix - row numbers (d) = 100; half-bandwidth (l) = 20
+```{r}
+A = f_pbm(d = 100,l = 20,p = 1) 
+```
+
+The first row in the Fig. 1. Plots of band matrices \Sigma(s), s = 1,2,3,4
+
+```{r}
+
+image(rotate(sp2mat(permute(A$A, A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+image(rotate(sp2mat(permute(power(A$A,2), A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+image(rotate(sp2mat(permute(power(A$A,3), A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+image(rotate(sp2mat(permute(power(A$A,4), A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+```
+
+The second row in Fig.1. 
+The results of permutations obtained from the packing algorithm applied to randomly permuted matrices in the first row.
+
+```{r}
+per = find_per_final(A = A$A,0)
+C = permute(A$A,per)
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+per = find_per_final(A = power(A$A,2),0)
+C = permute(A$A,per)
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+per = find_per_final(A = power(A$A,3),0)
+C = permute(A$A,per)
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+per = find_per_final(A = power(A$A,4),0)
+C = permute(A$A,per)
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+```
+
+# Section 5. Permuted band matrices
+Code needed to generate Figures in subsection *Permuted band matrices*. 
+
+The original number of repetitions was set to 100 (see the n_rep parameter below). In the present version, however, n_rep has been reduced to 2 in order to shorten the execution time, as running the code with n_rep = 100 requires several hours. The simulation parameters may be restored to their original values if needed.
+
+Parameters of the simulations:
+
+```{r}
+
+n_rep = 2 # number of repetitions
+d = 1000  # number of rows (columns) in the matrix
+l_values = c(10,40) # half bandwidth of a full band matrix
+p_values = c(0.25,0.5,0.75) # sparsity parameter
+s_values = c(1,2,3) # neighborhood order
+
+```
+
+Simulations:
+
+```{r}
+results1 = data.frame(d = 0,l = 0,p = 0, s = 0, stat = 0, m_half_width = 0,half_bw = 0)
+results2 = data.frame(d = 0,l = 0,p = 0, s = 0, F_s = 0)
+
+
+for(l in l_values){
+  A_ref = f_pbm(d = d,l = l,p = 1) #reference full band matrix
+  for(p in p_values){
+    for(i in 1:n_rep){
+      A     = f_pbm(d = d,l = l,p = p) # initial band matrix
+      #If the initial matrix is block-diagonal 
+      #with at least two blocks, we regenerate the matrix,
+      #until we get matrix with one block:
+      while(length(A$A) != sum(BSF_algorithm(1,A$A)>=0)){  
+        A     = f_pbm(d = d,l = l, p = p)
+      }
+      
+      for(s in s_values){
+        AA = power(A$A,s) #AA is a matrix representing row connections in s-th order neighborhoods 
+        per = find_per_final(AA,0) # permutation returned by the packing algorithm
+        
+        # We permute the rows and columns of the matrix A$A 
+        #according to the permutation returned by the algorithm:
+        C = permute(A$A,per) 
+        #the half-widths of D_i's under 'per':
+        l_seq = c()
+        for(j in 1:length(C)){
+          l_seq[j] = max(abs(C[[j]]-j))
+        }
+        results1 = rbind(results1, c(d,l,p,s,1,mean(l_seq), max(l_seq)))
+        
+        # We permute the rows and columns of the matrix A$A 
+        #according to the initial permutation A$per:
+        C = permute(A$A,A$per)
+        #the half-widths of D_i's under 'A$per' (original permutation)
+        l_seq = c()
+        for(j in 1:length(C)){
+          l_seq[j] = max(abs(C[[j]]-j))
+        }
+        results1 = rbind(results1, c(d,l,p,s,2,mean(l_seq), max(l_seq)))
+        
+        #the level of (band) filling F(s):
+        F_s = sum(sp2mat(AA) !=0)/(d*(2*s*l+1)-l*s*(l*s+1))
+        results2 = rbind(results2, c(d,l,p,s,F_s))
+        
+      }
+    }
+  }
+  
+}
+results1 = results1[-1,] #removing the initial (zero-filled) row 
+#Determination of the mean across repetitions for different parameter value combinations:
+summar1 = aggregate(results1, by = list(results1$l,results1$p,results1$s,results1$stat), mean)
+
+```
+
+#Figure 2.
+Code needed to generate *Figure 2* which presents results for the average half-width and half-bandwidth.
+
+```{r}
+
+#Fig.2. Results for the average half-width (\Vert \boldsymbol l^{(\pi)} \Vert_1/d) 
+qplot(p, m_half_width, data = summar1, colour = as.factor(stat), geom = c("point", "line")) + 
+  facet_wrap(s ~ l, scales = "free_y", ncol = 2, 
+             labeller = labeller(s = function(x) paste("s =", x), 
+                                 l = function(x) paste("\u03BB =", x), .multi_line = FALSE)) + 
+  labs(y = "") +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(size = 14, hjust = 0.5, vjust = 0.5, angle = 0),  # Larger font size for panel labels
+    axis.text = element_text(size = 12),  # Larger font size for axis text
+    axis.title = element_text(size = 14),  # Larger font size for axis titles
+    plot.title = element_text(size = 16, face = "bold")  # Larger font size for the plot title
+  ) +
+  geom_hline(aes(yintercept = l), linetype = "dashed", color = "black") +
+  geom_line(linewidth = 1.0) +  # Thicker lines
+  geom_point(size = 2)  # Larger points
+
+
+#Fig.2. Results for the half-bandwidth:
+qplot(p, half_bw, data = summar1, colour = as.factor(stat), geom = c("point", "line")) + 
+  facet_wrap(s ~ l, scales = "free_y", ncol = 2, 
+             labeller = labeller(s = function(x) paste("s =", x), 
+                                 l = function(x) paste("\u03BB =", x), .multi_line = FALSE)) + 
+  labs(y = "")  +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(size = 14, hjust = 0.5, vjust = 0.5, angle = 0),  # Larger font size for panel labels
+    axis.text = element_text(size = 12),  # Larger font size for axis text
+    axis.title = element_text(size = 14),  # Larger font size for axis titles
+    plot.title = element_text(size = 16, face = "bold")  # Larger font size for the plot title
+  ) +
+  geom_line(size = 1.0) +  # Thicker lines
+  geom_point(size = 2)  # Larger points
+
+```
+
+#Figure 3 (left panel).
+
+Code needed to generate left panel of *Figure 3*. It presents the average level of (band) filling F(s), which quantifies the fraction of nonzero entries within the band. Higher filling yields a structure closer to a full band matrix, improving distance approximation and enhancing the quality of the resulting permutation.
+
+
+```{r}
+
+results2 = results2[-1,] #removing the initial (zero-filled) row 
+
+#Determination of the mean across repetitions for different parameter value combinations:
+summar2 = aggregate(results2, by = list(results2$l,results2$p,results2$s), mean)
+summar2$s = factor(summar2$s)
+
+
+#Fig. 3 (left panel). Average results for the level of (band) filling F(s):
+qplot(p, F_s, data = summar2[summar2$l == 10,],  
+      linetype = s, color = s, geom = c("point", "line")) +  
+  labs(y = "") +  
+  scale_y_continuous(limits = c(NA, 1)) +  
+  theme(  
+    legend.position = "none",  
+    strip.text = element_text(size = 14, hjust = 0.5, vjust = 0.5, angle = 0),  # Larger font size for panel labels  
+    axis.text = element_text(size = 18),  # Larger font size for axis text  
+    axis.title = element_text(size = 18),  # Larger font size for axis titles  
+    plot.title = element_text(size = 16, face = "bold")  # Larger font size for the plot title  
+  ) +  
+  geom_line(size = 1.0) +  # Thicker lines  
+  geom_point(size = 2)  # Larger points  
+
+```
+
+
