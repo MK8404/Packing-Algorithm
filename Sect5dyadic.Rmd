@@ -1,0 +1,116 @@
+---
+title: "Section 5 Permuted Dyadic matrices"
+output: html_document
+date: "2026-05-27"
+---
+
+## Description
+
+In this notebook, the simulation and computational study is performed for Section 5 of *Structural packing, factorization, and efficient inversion of sparse positive definite matrices* by Michał Kos, Krzysztof Podgórski and Hanqing Wu. We consider different cases of dyadic matrices and the effect of applying the new packing algorithm to them.
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. In the following chunk, we set the basic markdown parameters for these experiments.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '<THE TARGET FOLDER>')
+```
+
+When you click the **Knit** button, a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(Matrix)
+library(R.matlab)
+#install.packages("data.table")
+library(data.table)
+#install.packages("Rcpp")
+library(Rcpp)
+library(ggplot2)
+```
+
+## Supporting functions
+
+The following are some useful functions that will be utilized in the study below. They can be found in the corresponding directories at the GitHub repository. There can be a warning generated, which does not have a negative effect.
+
+```{r}
+## Code for generating matrices and packing algorithms
+source("Packing/matrix_generation.R")
+source("Packing/packing_alg.R")
+rotate <- function(x) t(apply(x, 2, rev))
+```
+
+
+# Section 5. Permuted dyadic matrices
+Code needed to generate Figures in subsection *Permuted dyadic matrices*. 
+
+Figure 5. Banded dyadic matrix and dyadic matrix
+
+Banded dyadic matrix:
+
+```{r}
+#Banded dyadic matrix
+A = f_dbm(k = 10,N = 5,l = 60, p = 0.5, Id = F)
+
+# The first plot in the first row of Fig.5, original non-permuted banded dyadic matrix:
+image(rotate(sp2mat(permute(      A$A   , A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+# The second plot in the first row of Fig.5, second power of original non-permuted banded dyadic matrix:
+image(rotate(sp2mat(permute(power(A$A,2), A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+
+# We permute the rows and columns of the matrix A$A 
+#according to the permutation returned by the algorithm applied to neighborhoods of order 1:
+per = find_per_final(A$A,0)
+C = permute(A$A,per)
+# The first plot in the second row of Fig.5, matrix recovered by the packing algorithm 
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+# We permute the rows and columns of the matrix A$A 
+#according to the permutation returned by the algorithm applied to neighborhoods of order 2:
+per = find_per_final(power(A$A,2),0)
+C = permute(A$A,per)
+# The second plot in the second row of Fig.5, matrix recovered by the packing algorithm 
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+```
+
+Dyadic matrix:
+
+```{r}
+
+#Dyadic matrix
+A = f_dbm(k = 10,N = 5,l = 160, p = 0.45, Id = F)
+
+# The third plot in the first row of Fig.5, original non-permuted dyadic matrix:
+image(rotate(sp2mat(permute(      A$A   , A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+# The fourth plot in the first row of Fig.5, second power of original non-permuted dyadic matrix:
+image(rotate(sp2mat(permute(power(A$A,2), A$per))),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+# We permute the rows and columns of the matrix A$A 
+#according to the permutation returned by the algorithm applied to neighborhoods of order 1:
+per = find_per_final(A$A,0)
+C = permute(A$A,per)
+# The third plot in the second row of Fig.5, matrix recovered by the packing algorithm 
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+# We permute the rows and columns of the matrix A$A 
+#according to the permutation returned by the algorithm applied to neighborhoods of order 2:
+per = find_per_final(power(A$A,2),0)
+C = permute(A$A,per)
+# The fourth plot in the second row of Fig.5, matrix recovered by the packing algorithm 
+image(rotate(sp2mat(C)),axes = FALSE, xlab = "", ylab = "", col = c("white", "black"))
+box(col = "black", lwd = 2)
+
+
+```
+
+
+
+
