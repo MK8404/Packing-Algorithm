@@ -55,9 +55,7 @@ Utilizing C++ improves computational efficiency in these two functions.
 Additionally, in **`find_per_final`**, the multidimensional scaling function **`cmdscale`** is used. It is a part of the standard **`stats`** R-package. 
 
 ## **Usage Instructions**  
-
-To reproduce the results, first, ensure that all necessary functions from `matrix_generation.R` and `packing_alg.R` are loaded into the R environment. Then, execute `simulations_and_plots.R` to generate the simulation results and figures.  
-
+To reproduce the figures and simulations presented in Section 5 of the paper, please run the code contained in the R Markdown files.
 ---
 
 For any questions or issues, please refer to the article or open an issue in this repository.
