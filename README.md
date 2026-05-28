@@ -7,8 +7,11 @@ positive definite matrices"**. The provided code enables reproduction of the sim
 
 ## **Repository Contents**  
 The R Markdown files
-1. **`Sect5robust.Rmd`** - the robustness study of Section 5 in the paper. 
-2. **`simulations_and_plots.R`** – Provides scripts for reproducing the simulation results and generating the figures from the **"Simulation based performance"** section of the article.  
+1. **`Sect5robust.Rmd`** - the robustness study of Section 5 in the paper.
+2. **`Sect5band.Rmd`** - Code needed to generate Figures in the subsection **"Permuted band matrices"**
+3. **`Sect5tridiagonal.Rmd`** - Code needed to generate Figures in the subsection **"Permuted tridiagonal matrices"**
+4. **`Sect5dyadic.Rmd`** - Code needed to generate Figures in the subsection **"Permuted dyadic matrices"**
+    
 
 The repository also includes three subdirectories.
 
