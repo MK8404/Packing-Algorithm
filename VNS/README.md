@@ -29,13 +29,15 @@ g++ -std=c++11 VNS_main.cpp VNS.cpp helper.cpp -x c++ mmio.c -o VNS_main
 
 Windows users can build the program with MSYS2/MinGW.
 
-1. Install MSYS2: https://www.msys2.org/
+1. Install [MSYS2](https://www.msys2.org/).
 2. Open the **MSYS2 MinGW 64-bit** shell.
 3. Install the required packages:
 
-```sh
-pacman -S --needed mingw-w64-x86_64-gcc
-```
+    ```sh
+    pacman -S --needed mingw-w64-x86_64-gcc
+    ```
+
+    The `pacman` command is only for installing GCC in MSYS2. If you already have a C++11 compiler on Windows, you can use that compiler instead.
 
 4. Compile from this directory:
 
@@ -81,5 +83,5 @@ Output files are written to the current working directory.
 
 ## References
 
-- Mladenovic, N., Urosevic, D., Perez-Brito, D., and Garcia-Gonzalez, C. G. (2010). Variable neighbourhood search for bandwidth reduction. *European Journal of Operational Research*, 200(1), 14-27. https://doi.org/10.1016/j.ejor.2008.12.015
-- Matrix Market I/O library for ANSI C. http://math.nist.gov/MatrixMarket/
+- Mladenovic, N., Urosevic, D., Perez-Brito, D., and Garcia-Gonzalez, C. G. (2010). Variable neighbourhood search for bandwidth reduction. *European Journal of Operational Research*, 200(1), 14-27. <https://doi.org/10.1016/j.ejor.2008.12.015>
+- Matrix Market I/O library for ANSI C. <http://math.nist.gov/MatrixMarket/>
